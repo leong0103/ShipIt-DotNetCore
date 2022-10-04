@@ -26,10 +26,17 @@ namespace ShipIt.Controllers
         {
             Log.Info($"Looking up employee by name: {name}");
 
-            var employee = new Employee(_employeeRepository.GetEmployeeByName(name));
-
-            Log.Info("Found employee: " + employee);
-            return new EmployeeResponse(employee);
+            var employee = _employeeRepository.SearchEmployeeByName(name);
+            var employeeResponse = new EmployeeResponse();
+            List<Employee> employees = new List<Employee>();
+            foreach (var item in employee)
+            {
+                employees.Add(new Employee(item));
+                Log.Info("Found employee: " + employee);
+            }
+            employeeResponse.Employees = employees;
+            employeeResponse.Success = true;
+            return employeeResponse;
         }
 
         [HttpGet("{warehouseId}")]

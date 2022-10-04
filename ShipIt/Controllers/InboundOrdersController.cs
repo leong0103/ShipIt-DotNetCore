@@ -30,7 +30,7 @@ namespace ShipIt.Controllers
         }
 
         [HttpGet("{warehouseId}")]
-        public async Task<InboundOrderResponse> GetAsync([FromRoute] int warehouseId)
+        public InboundOrderResponse Get([FromRoute] int warehouseId)
         {
             Log.Info("orderIn for warehouseId: " + warehouseId);
 

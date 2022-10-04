@@ -54,13 +54,8 @@ namespace ShipIt.Controllers
         [HttpGet("warehouse/{warehouseId:int}")]
         public async Task<List<ProductWarehouseDataModel>> GetStockDetailsAsync([FromRoute] int warehouseId)
         {
-            Stopwatch stopwatch = new Stopwatch();
-
-            stopwatch.Start();
-                var allStock = _stockRepository.GetStockByWarehouseId(warehouseId);
-            stopwatch.Stop();
-            Console.WriteLine("Elapsed Time is {0} ms", stopwatch.ElapsedMilliseconds);
-
+ 
+            var allStock = _stockRepository.GetStockByWarehouseId(warehouseId);
             var productDetail = new List<ProductWarehouseDataModel>();
 
             await Parallel.ForEachAsync(allStock, async (product, cancellationToken) =>
@@ -69,10 +64,9 @@ namespace ShipIt.Controllers
             });
             // foreach (var product in allStock)
             // {
-            //     stopwatch.Start();
+                
             //     productDetail.Add(new ProductWarehouseDataModel(_productRepository.GetProductById(product.ProductId), product.held));
-            //     stopwatch.Stop();
-            //     Console.WriteLine("Elapsed Time is {0} ms", stopwatch.ElapsedMilliseconds);
+                
             // }
             return productDetail;
         }
