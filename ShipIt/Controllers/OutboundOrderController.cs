@@ -24,7 +24,7 @@ namespace ShipIt.Controllers
         }
 
         [HttpPost("")]
-        public OutboundOrderResponse Post([FromBody] OutboundOrderRequestModel request)
+        public OutboundOrderResponseTruck Post([FromBody] OutboundOrderRequestModel request)
         {
             Log.Info(String.Format("Processing outbound order: {0}", request));
 
@@ -94,40 +94,101 @@ namespace ShipIt.Controllers
             {
                 throw new InsufficientStockException(string.Join("; ", errors));
             }
-
-            _stockRepository.RemoveStock(request.WarehouseId, lineItems);
+            
+            // _stockRepository.RemoveStock(request.WarehouseId, lineItems);
             OutboundOrderResponse response = new OutboundOrderResponse(request.WarehouseId, lineItems);
+            
+
+            List<Truck> trucks = new List<Truck>();
+            List<StockAlteration> stockNeedToSend = new List<StockAlteration>();
+
+//stockNeedToSend is reference types??
+
+            stockNeedToSend = response.StockAlteration.ToList();
+
+            //get total Weight need to send
+            int maxCapicityOfTruck = 2000;
             float totalWeight = 0;
             foreach (var item in response.StockAlteration)
             {
                 totalWeight += item.Weight * item.Quantity;
             }
-            response.TotalTruckNeeded = (int)Math.Ceiling(totalWeight / 2000);
-
-            //To find how many truks
-            // var remainingItems = lineItems;
-            // float totalWeight = 0;
-            // var trucks = new List<Truck>();
-            // float totalWeightPerTruck = 2000000;        
             
-            // foreach (var item in remainingItems)
-            // {
-            //     totalWeight += item.Weight * item.Quantity;
-            // }
+            //inital setup
+            bool isSuitableItemFind = false;
+            int counter = 0;
+            bool needNewTruck = true;
 
-            // while (totalWeight > 0)
-            // {
-            //     if(totalWeight > 0)
-            //     {
-            //         foreach (var item in remainingItems)
-            //         {
-            //             totalWeightPerTruck < item.Weight
-            //         }
+            //If totalWeight > 0, infinity loop
+            while (totalWeight > 1)
+            {   
+                //loop the list one more time to pick items, 
+                if(counter > 1)
+                {
+                    needNewTruck = true;
+                }
+                if(needNewTruck)
+                {
+                    trucks.Add(new Truck());
+                    
+                    needNewTruck = false;
 
-            //     }
-            // }
-            return response;
+                }
+                foreach (var item in stockNeedToSend)
+                {   
+                    //get last truck weight and compare with maxCapicity
+                    if(trucks.LastOrDefault().totalWeight < maxCapicityOfTruck)
+                    {
+                        for (int i = item.Quantity; i > 0; i--)
+                        {
+                            float weight = i * item.Weight;
+                            
+                            if((!(weight >= maxCapicityOfTruck - trucks.LastOrDefault().totalWeight)) && !isSuitableItemFind && trucks.LastOrDefault() != null)
+                            {
+                                item.Quantity -= i;
+                                
+                                //No this part, will got error
+                                if (trucks.LastOrDefault().Items == null)
+                                {
+                                    throw new InsufficientStockException(string.Join("; ", errors));
+                                    
+                                }
+                                trucks.LastOrDefault().Items.Add(new StockAlteration(item.ProductId, i, weight));
+                                trucks.LastOrDefault().totalWeight += weight;
+                                totalWeight -= weight;
+                                isSuitableItemFind = true;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        trucks.Add(new Truck());
+                        needNewTruck = false;
+                    }
+                    isSuitableItemFind = false;
+                }
+                
+                counter++;
+            }
 
+            //setup for print
+            int truckNumber = 0;
+            foreach(var truck in trucks)
+            {  
+                Console.WriteLine("Total Weight{0}:", truck.totalWeight);
+                Console.WriteLine("This is trunk{0}", truckNumber);
+                
+                foreach(var S in truck.Items)
+                {
+                    Console.WriteLine("Item:");
+                    Console.WriteLine(S.ProductId);
+                    Console.WriteLine(S.Quantity);
+                    Console.WriteLine(S.Weight);
+                }
+                truckNumber ++;
+            }
+            return new OutboundOrderResponseTruck(trucks, stockNeedToSend, response.StockAlteration.ToList());
+            // return response;
         }
     }
 }
