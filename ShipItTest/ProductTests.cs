@@ -12,7 +12,7 @@ namespace ShipItTest
 {
     public class ProductControllerTests : AbstractBaseTest
     {
-        ProductController productController = new ProductController(new ProductRepository());
+        ProductController productController = new ProductController(new ProductRepository(), new StockRepository());
         ProductRepository productRepository = new ProductRepository();
 
         private const int WAREHOUSE_ID = 1;
