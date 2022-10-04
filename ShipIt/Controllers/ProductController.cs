@@ -1,5 +1,8 @@
-﻿﻿using System.Collections.Generic;
+﻿﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using ShipIt.Exceptions;
 using ShipIt.Models.ApiModels;
@@ -16,11 +19,20 @@ namespace ShipIt.Controllers
         private static readonly log4net.ILog Log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod()?.DeclaringType);
 
         private readonly IProductRepository _productRepository;
+        private readonly IStockRepository _stockRepository;
 
-        public ProductController(IProductRepository productRepository)
+        public ProductController(IProductRepository productRepository, IStockRepository stockRepository)
         {
             _productRepository = productRepository;
+            _stockRepository = stockRepository;
         }
+
+        // public ProductController(IProductRepository productRepository)
+        // {
+        //     _productRepository = productRepository;
+        // }
+
+
 
         [HttpGet("{gtin}")]
         public ProductResponse Get([FromRoute] string gtin)
@@ -38,6 +50,33 @@ namespace ShipIt.Controllers
 
             return new ProductResponse(product);
         }
+        [Route("warehouse/{warehouseId:int}")]
+        [HttpGet("warehouse/{warehouseId:int}")]
+        public async Task<List<ProductWarehouseDataModel>> GetStockDetailsAsync([FromRoute] int warehouseId)
+        {
+            Stopwatch stopwatch = new Stopwatch();
+
+            stopwatch.Start();
+                var allStock = _stockRepository.GetStockByWarehouseId(warehouseId);
+            stopwatch.Stop();
+            Console.WriteLine("Elapsed Time is {0} ms", stopwatch.ElapsedMilliseconds);
+
+            var productDetail = new List<ProductWarehouseDataModel>();
+
+            await Parallel.ForEachAsync(allStock, async (product, cancellationToken) =>
+            {
+                productDetail.Add(new ProductWarehouseDataModel(_productRepository.GetProductById(product.ProductId), product.held));
+            });
+            // foreach (var product in allStock)
+            // {
+            //     stopwatch.Start();
+            //     productDetail.Add(new ProductWarehouseDataModel(_productRepository.GetProductById(product.ProductId), product.held));
+            //     stopwatch.Stop();
+            //     Console.WriteLine("Elapsed Time is {0} ms", stopwatch.ElapsedMilliseconds);
+            // }
+            return productDetail;
+        }
+
 
         [HttpPost("")]
         public Response Post([FromBody] ProductsRequestModel requestModel)

@@ -1,6 +1,8 @@
 ﻿﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using ShipIt.Exceptions;
 using ShipIt.Models.ApiModels;
@@ -28,7 +30,7 @@ namespace ShipIt.Controllers
         }
 
         [HttpGet("{warehouseId}")]
-        public InboundOrderResponse Get([FromRoute] int warehouseId)
+        public async Task<InboundOrderResponse> GetAsync([FromRoute] int warehouseId)
         {
             Log.Info("orderIn for warehouseId: " + warehouseId);
 
@@ -37,10 +39,11 @@ namespace ShipIt.Controllers
             Log.Debug(String.Format("Found operations manager: {0}", operationsManager));
 
             var allStock = _stockRepository.GetStockByWarehouseId(warehouseId);
-
+            
             Dictionary<Company, List<InboundOrderLine>> orderlinesByCompany = new Dictionary<Company, List<InboundOrderLine>>();
+
             foreach (var stock in allStock)
-            {
+            {   
                 Product product = new Product(_productRepository.GetProductById(stock.ProductId));
                 if(stock.held < product.LowerThreshold && !product.Discontinued)
                 {
@@ -52,6 +55,7 @@ namespace ShipIt.Controllers
                     {
                         orderlinesByCompany.Add(company, new List<InboundOrderLine>());
                     }
+             
 
                     orderlinesByCompany[company].Add( 
                         new InboundOrderLine()
@@ -72,13 +76,14 @@ namespace ShipIt.Controllers
             });
 
             Log.Info("Constructed inbound order");
-
-            return new InboundOrderResponse()
+            var inboundOrderReturn = new InboundOrderResponse()
             {
                 OperationsManager = operationsManager,
                 WarehouseId = warehouseId,
                 OrderSegments = orderSegments
             };
+            return inboundOrderReturn; 
+
         }
 
         [HttpPost("")]

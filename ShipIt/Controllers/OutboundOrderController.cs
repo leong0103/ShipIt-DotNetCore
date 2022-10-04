@@ -4,6 +4,7 @@ using System.Linq;
  using Microsoft.AspNetCore.Mvc;
  using ShipIt.Exceptions;
 using ShipIt.Models.ApiModels;
+using ShipIt.Models.DataModels;
 using ShipIt.Repositories;
 
 namespace ShipIt.Controllers
@@ -23,10 +24,11 @@ namespace ShipIt.Controllers
         }
 
         [HttpPost("")]
-        public void Post([FromBody] OutboundOrderRequestModel request)
+        public OutboundOrderResponse Post([FromBody] OutboundOrderRequestModel request)
         {
             Log.Info(String.Format("Processing outbound order: {0}", request));
 
+            //get product gtin list, no duplicate.
             var gtins = new List<String>();
             foreach (var orderLine in request.OrderLines)
             {
@@ -53,7 +55,7 @@ namespace ShipIt.Controllers
                 else
                 {
                     var product = products[orderLine.gtin];
-                    lineItems.Add(new StockAlteration(product.Id, orderLine.quantity));
+                    lineItems.Add(new StockAlteration(product.Id, orderLine.quantity, product.Weight));
                     productIds.Add(product.Id);
                 }
             }
@@ -94,6 +96,38 @@ namespace ShipIt.Controllers
             }
 
             _stockRepository.RemoveStock(request.WarehouseId, lineItems);
+            OutboundOrderResponse response = new OutboundOrderResponse(request.WarehouseId, lineItems);
+            float totalWeight = 0;
+            foreach (var item in response.StockAlteration)
+            {
+                totalWeight += item.Weight * item.Quantity;
+            }
+            response.TotalTruckNeeded = (int)Math.Ceiling(totalWeight / 2000);
+
+            //To find how many truks
+            // var remainingItems = lineItems;
+            // float totalWeight = 0;
+            // var trucks = new List<Truck>();
+            // float totalWeightPerTruck = 2000000;        
+            
+            // foreach (var item in remainingItems)
+            // {
+            //     totalWeight += item.Weight * item.Quantity;
+            // }
+
+            // while (totalWeight > 0)
+            // {
+            //     if(totalWeight > 0)
+            //     {
+            //         foreach (var item in remainingItems)
+            //         {
+            //             totalWeightPerTruck < item.Weight
+            //         }
+
+            //     }
+            // }
+            return response;
+
         }
     }
 }
